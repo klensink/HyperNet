@@ -1,0 +1,5 @@
+README.md
+cudnn_convolution.egg-info/PKG-INFO
+cudnn_convolution.egg-info/SOURCES.txt
+cudnn_convolution.egg-info/dependency_links.txt
+cudnn_convolution.egg-info/top_level.txt

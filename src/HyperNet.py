@@ -13,8 +13,8 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
 from src.utils import byte2mb, mem_report, check_mem, model_size, clear_grad
-from src.Haar3D import Haar3D
-from src.DoubleSym import DoubleSymLayer3D
+from src.Haar2D import Haar2D
+from src.DoubleSym import DoubleSymLayer2D
 from src.parallel import ReversibleDataParallel
 
 def set_seed(seed):
@@ -34,7 +34,7 @@ def tdot(A,B):
 
 class HyperNet(nn.Module):
 
-    def __init__(self, channels_in, nclasses, layers_per_unit, h=1e-1, verbose=False, layer_class = DoubleSymLayer3D, wave=Haar3D, clear_grad=True, classifier_type='conv3', act=F.relu):
+    def __init__(self, channels_in, nclasses, layers_per_unit, h=1e-1, verbose=False, layer_class = DoubleSymLayer2D, wave=Haar2D, clear_grad=True, classifier_type='conv3', act=F.relu):
         """
         HyperNet(self, channels_in, nclasses, layers_per_unit, h=1e-1, verbose=False, wave=HaarDWT, clear_grad=True, classifier_type='conv', act=F.relu):
 
@@ -122,7 +122,7 @@ class HyperNet(nn.Module):
         for i_unit, (layers, pool) in enumerate(zip(self.units, self.wavepools)):
             for f in layers:
 
-                self.vprint('Layer %d - %d : %d, %d, %d, %d, %d' % (*f.id, *Y.shape))
+                self.vprint('Layer %d - %d : %d, %d, %d, %d' % (*f.id, *Y.shape))
 
                 tmp = Y
                 Y = 2*Y - Yo + self.h**2 * f(Y)
@@ -130,7 +130,7 @@ class HyperNet(nn.Module):
 
             # Apply DWT to Y and Yo
             if pool is not None:
-                self.vprint('Pool In     : %d, %d, %d, %d, %d' % Y.shape)
+                self.vprint('Pool In     : %d, %d, %d, %d' % Y.shape)
 
                 if pool.mode == 'down':
                     Y = pool(Y)
@@ -141,7 +141,7 @@ class HyperNet(nn.Module):
                 else:
                     raise NotImplementedError('This pooling mode is not implemented', pool.mode)
 
-                self.vprint('Pool Out    : %d, %d, %d, %d, %d' % Y.shape)
+                self.vprint('Pool Out    : %d, %d, %d, %d' % Y.shape)
             self.vprint('')
 
         return Y, Yo
@@ -171,7 +171,7 @@ class HyperNet(nn.Module):
 
                 # Reverse pooling operation
                 if pool is not None:
-                    self.vprint('Back Pool In     : %d, %d, %d, %d, %d' % Y.shape)
+                    self.vprint('Back Pool In     : %d, %d, %d, %d' % Y.shape)
 
                     # If this pooling op was used to downsample in the fwd pass
                     if pool.mode == 'down':
@@ -195,12 +195,12 @@ class HyperNet(nn.Module):
                         dY = pool.inverseBackward(dY)
                         dYo = pool.inverseBackward(dYo)
 
-                    self.vprint('Back Pool Out    : %d, %d, %d, %d, %d' % Y.shape)
+                    self.vprint('Back Pool Out    : %d, %d, %d, %d' % Y.shape)
 
                 # Loop backward thru the layers of the unit
                 for f in layers[::-1]:
                     unit_num, layer_num = f.id
-                    self.vprint('Layer %d - %d : %d, %d, %d, %d, %d' % (*f.id, *Y.shape))
+                    self.vprint('Layer %d - %d : %d, %d, %d, %d' % (*f.id, *Y.shape))
 
                     if use_local_graph:
                         with torch.enable_grad():

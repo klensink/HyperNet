@@ -2,7 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from src.grad import conv3d_weight
+# from src.grad import conv3d_weight
+from grad import conv2d_weight
+# from src.grad import conv2d_weight
 
 ygrad = None
 def store_grad(x):
@@ -12,6 +14,57 @@ def store_grad(x):
 def drelu(x):
     dx = torch.max(torch.zeros_like(x), torch.sign(x))
     return dx
+
+class DoubleSymLayer2D(nn.Module):
+
+    def __init__(self, channels_in, channels_out, act=F.relu, dact=drelu, id = None, kernel_size=3):
+        super().__init__()
+
+        self.id = id
+        self.kernel_size = kernel_size
+        self.K = nn.Conv2d(channels_in, channels_out, kernel_size=kernel_size, bias=None, padding=self.kernel_size//2)
+        self.norm = tv_norm
+        self.dnorm = dtv_norm
+        self.act = act
+        self.dact = dact
+
+    def forward(self, x):
+        y = self.K(x)
+        y = self.norm(y)
+        y = self.act(y)
+        y = -F.conv_transpose2d(y, self.K.weight, bias=self.K.bias, padding=self.kernel_size//2)
+
+        return y
+
+    def backward(self, x, dy):
+
+        # Recompute forward
+        y1 = self.K(x)
+        y2 = self.norm(y1)
+        y_act = self.act(y2)
+        dyact = self.dact(y2)
+        y = -F.conv_transpose2d(y_act, self.K.weight, bias=self.K.bias, padding=self.kernel_size//2)
+
+        # dx = -K'diag(sigma'(x, K))*K*dy
+        # dK = d/dK1(y'*K1'*sigma(K2*x)) + d/dK2(y'*K1'*sigma(K2*x))
+        #    = d/dK1(sigma(K2*x)*K1*y) +  y'*K1'*dsigma(K2*x)  * d/dK2 (K2*x)
+        #    = sigma(K2*x) d/dK1 (K1*y) + y'*K1'*dsigma(K2*x) * d/dK2(K2*x)
+        # (put back K1 = -K, K2 = K)
+        #    = - sigma(K*x) d/dK (K*y) - (K*y)'*dsigma(K*x) * d/dK (K*x)
+
+        dx1 = self.K(dy)
+        dx2 = dyact*dx1
+        dx2 = self.dnorm(y1, dx2)
+        dx = -F.conv_transpose2d(dx2, self.K.weight, bias=self.K.bias, padding=self.kernel_size//2)
+
+        dK1 = - conv2d_weight(dy, self.K.weight.shape, y_act, padding=self.kernel_size//2)
+        dK2 = - conv2d_weight(x, self.K.weight.shape, dx2, padding=self.kernel_size//2)
+        dK = dK1 + dK2
+
+        self.K.weight.grad = dK
+
+        return y, dx, dK
+
 
 class DoubleSymLayer3D(nn.Module):
 
@@ -92,12 +145,12 @@ if __name__ == '__main__':
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
     # Define the input
-    (N, C, D, W, H) = (2,4,8,16,24)
-    x = torch.rand(N, C, D, W, H, requires_grad=True, device=device)
-    c = torch.rand(N, C, D, W, H).to(device)
+    (N, C, W, H) = (2,4,16,24)
+    x = torch.rand(N, C, W, H, requires_grad=True, device=device)
+    c = torch.rand(N, C, W, H).to(device)
 
     # Build the layer
-    f = DoubleSymLayer3D(C, C, F.relu, drelu, kernel_size=3).to(device)
+    f = DoubleSymLayer2D(C, C, F.relu, drelu, kernel_size=3).to(device)
 
     # Compute gradients with auto grad
     y = f(x)
