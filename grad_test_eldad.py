@@ -20,18 +20,17 @@ if __name__ == '__main__':
 
     set_seed(1234)
 
-    # Get MNIST dataloaders
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     # device = 'cpu'
 
-    num_features = 441
+    num_features = 16
     N = 400
     k = 1
     batch_size = 1
 
     # Build the network
     n = (4, 'down')
-    net = HyperNet(num_features, k, [(1, None)], h=1e-5, verbose=True, clear_grad=False, classifier_type='conv').to(device)
+    net = HyperNet(num_features, k, [(4, 'down'), (4, 'up'), (4, None)], h=1e-5, verbose=True, clear_grad=False, classifier_type='conv').to(device)
     print('Model Size: %6.2f' % model_size(net))
 
     def get_optim(net): return torch.optim.SGD(
@@ -112,16 +111,16 @@ if __name__ == '__main__':
     d = res.norm()/original.norm()
     print("\nInput Recovery: %6.4e" % d.item())
 
-    plt.subplot(1, 3, 1)
-    plt.imshow(np.moveaxis(images[0].detach().cpu().numpy(), 0, -1))
-    plt.title('Original')
+    # plt.subplot(1, 3, 1)
+    # plt.imshow(np.moveaxis(images[0].detach().cpu().numpy(), 0, -1))
+    # plt.title('Original')
 
-    plt.subplot(1, 3, 2)
-    plt.imshow(np.moveaxis(images[0].detach().cpu().numpy(), 0, -1))
-    plt.title('Recovery')
+    # plt.subplot(1, 3, 2)
+    # plt.imshow(np.moveaxis(images[0].detach().cpu().numpy(), 0, -1))
+    # plt.title('Recovery')
 
-    plt.subplot(1, 3, 3)
-    plt.imshow(
-        np.clip(np.moveaxis((images - Y)[0].detach().cpu().numpy(), 0, -1), 0, 1))
-    plt.title('Residual')
-    # plt.show()
+    # plt.subplot(1, 3, 3)
+    # plt.imshow(
+    #     np.clip(np.moveaxis((images - Y)[0].detach().cpu().numpy(), 0, -1), 0, 1))
+    # plt.title('Residual')
+    # # plt.show()

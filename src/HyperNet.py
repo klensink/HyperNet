@@ -214,12 +214,13 @@ class HyperNet(nn.Module):
                             d = tdot(dY, Z)
                             d.backward()
 
-                        # Calc derivative of activation
-                        for p in f.parameters():
-                            p._grad = p._grad * self.h**2
                         dYi = Y.grad.data.clone().detach()
                     else:
                         Z, dYi, dK = f.backward(Y, dY)
+
+                    # Calc derivative of activation
+                    for p in f.parameters():
+                        p._grad = p._grad * self.h**2
 
                     # Update weights and clear grad
                     Z = Z.detach()                

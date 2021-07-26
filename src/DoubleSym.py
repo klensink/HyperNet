@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 # from src.grad import conv3d_weight
-from grad import conv2d_weight
-# from src.grad import conv2d_weight
+# from grad import conv2d_weight
+from src.grad import conv2d_weight
 
 ygrad = None
 def store_grad(x):
